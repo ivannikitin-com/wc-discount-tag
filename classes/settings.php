@@ -63,6 +63,7 @@ class Settings
 
 	/**
 	 * Формирует массив настроек
+	 * https://docs.woocommerce.com/wc-apidocs/source-class-WC_Admin_Settings.html#189-623
 	 */
 	private function getSettings()
 	{

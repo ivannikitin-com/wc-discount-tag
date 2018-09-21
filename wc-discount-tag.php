@@ -25,7 +25,7 @@ require( 'classes/settings.php' );
 
 
 // Основной класс плагина
-class Plugin
+class Plugin implements ISettingsPart
 {
 	/**
 	 * Текстоввый домен плагина
@@ -71,9 +71,24 @@ class Plugin
 	{
 		// Объект настроек
 		$this->settings = Settings::getInstance();
+		$this->settings->registerPart( $this );
 	}
 	
-
+	/**
+	 * Формирует массив настроек
+	 */
+	public function getSettings()
+	{
+		return array(
+			'debug_mode' => array(
+				'name' => __( 'Режим отладки', self::TEXTDOMAIN ),
+				'type' => 'checkbox',
+				'default' => 0,
+				'desc' => __( 'Этот режим включает функции отладки, например, возможность указания любого параметра ip с помощью GET-параметров', INWCOA ),
+				'id'   => 'wcdt_debug_mode'
+			)			
+		);
+	}
 	
 }
 
