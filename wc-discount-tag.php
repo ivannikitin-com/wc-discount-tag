@@ -20,8 +20,12 @@ namespace WCDT;
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 // Подключение классов
-require( 'classes/isettingspart.php' );
-require( 'classes/settings.php' );
+require_once( 'classes/isettingspart.php' );
+require_once( 'classes/settings.php' );
+require_once( 'classes/discountmanager.php' );
+require_once( 'classes/discounts/abstractdiscount.php' );
+require_once( 'classes/triggermanager.php' );
+require_once( 'classes/triggers/abstracttrigger.php' );
 
 
 // Основной класс плагина
@@ -36,7 +40,12 @@ class Plugin implements ISettingsPart
 	/**
 	 * Объект параметров 
 	 */
-    private $settings;		
+    private $settings;
+	
+	/**
+	 * Объект менеджера скидок 
+	 */
+    private $discountManager;	
 	
 	/**
 	 * Конструктор 
@@ -49,6 +58,12 @@ class Plugin implements ISettingsPart
 			add_action( 'admin_notices', array( $this, 'showMessageNoWC' ) );
 			return;
 		}
+
+		// Инициализация админской части
+		if ( is_admin() ) 
+		{
+			add_action( 'admin_enqueue_scripts', array( $this, 'loadAdminScripts' ) );
+		}		
 		
 		// Инициализация плагина
 		add_action( 'init', array( $this, 'init' ) );
@@ -72,6 +87,9 @@ class Plugin implements ISettingsPart
 		// Объект настроек
 		$this->settings = Settings::getInstance();
 		$this->settings->registerPart( $this );
+		
+		// Объект менеджера скидок
+		$this->discountManager = new DiscountManager();
 	}
 	
 	/**
@@ -88,6 +106,21 @@ class Plugin implements ISettingsPart
 				'id'   => 'wcdt_debug_mode'
 			)			
 		);
+	}
+	
+	/** 
+	 * Загрузка сервисных скриптов и стилей 
+	 */	
+	function loadAdminScripts()
+	{
+		// Chosen Select jquery
+		// https://wordpress.stackexchange.com/questions/217691/chosen-select-jquery-not-working-in-plugin
+		// https://cdnjs.com/libraries/chosen
+		$choosenVer = '1.8.7';
+		wp_register_style( 'chosen-css', 'https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.min.css', array(), $choosenVer, 'all' );
+		wp_register_script( 'chosen-js', 'https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js', array( 'jquery' ), $choosenVer, true );
+		wp_enqueue_style( 'chosen-css' );
+		wp_enqueue_script( 'chosen-js' );		
 	}
 	
 }
