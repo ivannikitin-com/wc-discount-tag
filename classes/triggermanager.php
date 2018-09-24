@@ -4,7 +4,7 @@
  * Реализует CPT триггеров
  */
 namespace WCDT;
-use WCDT\Triggers;
+use WCDT\Storages\CacheStorage as CacheStorage;
 
 class TriggerManager
 {
@@ -14,13 +14,22 @@ class TriggerManager
 	const CPT = 'wcdt_trigger';
 	
 	/**
+	 * Кэш объектов
+ 	 */
+	public $cache;	
+	
+	/**
 	 * Конструктор 
 	 */
 	public function __construct()
 	{
+		// Кэш объектов
+		$this->cache = CacheStorage::getInstance();
+		
 		// Регистрация типа данных
 		$this->registerCPT();
 		
+		// Хуки
 		if ( is_admin() ) 
 		{
 			// Инициализация метабокса
@@ -30,19 +39,11 @@ class TriggerManager
 			// Колонки таблицы
 			add_filter( 'manage_edit-' . self::CPT . '_columns', array( $this, 'getTableColumns' ) ) ;
 			add_action( 'manage_' . self::CPT . '_posts_custom_column', array( $this, 'showTableColumnValues' ), 10, 2 );
-		}		
+		}
+		
+		// Начальная проверка всех триггеров зарегистрированных, необходима для сессионных триггеров
+		$this->checkTriggers( $this->getTriggers( $this->getAllTriggersIDs() ) );
 	}
-	
-	/**
-	 * Метод возвращает типы триггеров и реализующие их классы
-	 */
-	private function getTypes()
-	{
-		return array(
-			'\WCDT\Triggers\IPTrigger' => 'IP адрес',
-			'\WCDT\Discounts\QueryStringTrigger' => 'Параметр в URL',
-		);
-	}	
 	
 	/** ------------------------------------------------------------------------------------------------------------------------
 	 * Регистрация типа  
@@ -209,6 +210,9 @@ class TriggerManager
 		update_post_meta( $post_id, 'wcdt_blocking', $wcdt_new_blocking );
 		update_post_meta( $post_id, 'wcdt_global', $wcdt_new_global );
 		update_post_meta( $post_id, 'wcdt_trigger_value', $wcdt_new_value );
+		
+		// Очистка кэша
+		$this->cache->clear();
 	}
 	
 	/** ------------------------------------------------------------------------------------------------------------------------
@@ -251,9 +255,253 @@ class TriggerManager
 				{
 					echo __( 'Да', Plugin::TEXTDOMAIN );
 				}
-				break;					
-				
-		}		
+				break;
+		}
 	}
 	
+	/** ------------------------------------------------------------------------------------------------------------------------
+	 * Логика триггеров
+	 */
+	
+	/**
+	 * Метод возвращает типы триггеров и реализующие их классы
+	 */
+	private function getTypes()
+	{
+		return array(
+			'\WCDT\Triggers\IPTrigger' => 'IP адрес',
+			'\WCDT\Triggers\QueryStringTrigger' => 'Параметр в URL',
+		);
+	}
+	
+	/**
+	 * Создает экзмепляр триггера
+	 * @param int $id ID триггера
+	 * @return AbstractTrigger
+	 */
+	private function createTrigger( $id )
+	{
+		// Тип класса триггера
+		$class = get_post_meta( $id, 'wcdt_type', true );
+		
+		// Пытаемся создать триггер
+		try 
+		{
+			$trigger = new $class();
+		} 
+		catch (\Exception $e) 
+		{
+			throw new UndefinedTriggerException( __( 'Триггер неопределен.' . 'ID: '. $id . ' Class: ' . $class ) );
+		}
+		
+		$trigger->id = $id;
+		$trigger->global = get_post_meta( $id, 'wcdt_blocking', true );
+		$trigger->blocking = get_post_meta( $id, 'wcdt_global', true );
+		$trigger->value = get_post_meta( $id, 'wcdt_trigger_value', true );
+		$trigger->title = get_the_title( $id );
+		
+		return $trigger;
+	}	
+	
+	/**
+	 * Реализует основную логику проверки
+	 *		Получает список ID триггеров в виде массива или строку с ID разделенные запятыми
+	 *		Проверяет глобальные триггеры, 
+	 *			Если сработал хоть один блокирующий, возвращает false
+	 *			Если сработал хоть один обычный, возвращает true
+	 *   	Формирует список переданных триггеров
+	 *			Если сработал хоть один блокирующий, возвращает false
+	 *			Если сработал хоть один обычный, возвращает true
+	 *   
+	 * @param mixed | string $ids массив или строка с ID триггеров
+	 * @return bool
+	 */
+	public function check( $ids )
+	{
+		// Списки глобальгых триггеров
+		$globalTriggers = $this->getTriggers( $this->getGlobalTriggersIDs() );
+		$glovalBlockingTriggers = array();
+		$glovalRegularTriggers = array();
+		foreach ( $globalTriggers as $trigger )
+		{
+			if ( $trigger->blocking )
+				$glovalBlockingTriggers[] = $trigger;
+			else
+				$glovalRegularTriggers[] = $trigger;
+		}
+		
+		// Если сработал хоть один блокирующий глобальный триггер, возвращаем false
+		if ( $this->checkTriggers( $glovalBlockingTriggers, true ) )
+			return false;
+		
+		// Если сработал хоть один обычный глобальных триггер, возвращаем true
+		if ( $this->checkTriggers( $glovalRegularTriggers, true ) )
+			return true;		
+		
+		// Списки обычных триггеров
+		$triggers = $this->getTriggers( $ids );
+		$blockingTriggers = array();
+		$regularTriggers = array();
+		foreach ( $triggers as $trigger )
+		{
+			if ( $trigger->blocking )
+				$blockingTriggers[] = $trigger;
+			else
+				$regularTriggers[] = $trigger;
+		}
+		
+		// Если сработал хоть один блокирующий триггер, возвращаем false
+		if ( $this->checkTriggers( $blockingTriggers, true ) )
+			return false;
+		
+		// Возвращаем результат проверки обычных триггеров
+		return $this->checkTriggers( $regularTriggers, true );
+	}
+	
+	/**
+	 * Проверяет старбатывание триггеров в массиве триггеров и возвращает результат
+	 * @param mixed $triggers массив триггеров
+	 * @param bool $lazyCheck режим ленивой проверки. Возврашает true при первом срабатывании и далее проверка не идет
+	 * @return bool
+	 */
+	private function checkTriggers( $triggers, $lazyCheck = false)
+	{
+		$result = false;
+		foreach( $triggers as $trigger )
+		{
+			$triggerResult = $trigger->check();
+			if ( $triggerResult && $lazyCheck)
+				return true;
+			$result = $result || $triggerResult;
+		}
+		return $result;
+	}	
+	
+	/**
+	 * Создает массив триггеров по массиву id или строке, содержащей список ID через запятую 
+	 * @param mixed | string $ids массив или строка с ID триггеров
+	 * @return mixed AbstractTrigger
+	 */
+	public function getTriggers( $ids )
+	{
+		// Ключ для сохранения к кэше
+		$keyName = 'IDs:';
+		
+		// Подготовка ключа и массива IDs
+		if ( gettype( $ids ) == 'string' )
+		{
+			$keyName .= $ids;
+			$ids = explode(',', $ids );
+		}
+		else
+		{
+			$keyName .= implode(',', $ids);
+		}
+		
+		// Проверяем наличие в кэше
+		$triggers = $this->cache->getItem( $keyName, 'triggers' );
+		if ( ! empty( $triggers ) )
+			return $triggers;
+		
+		// Формируем массив триггеров
+		$triggers = array();
+		foreach ( $ids as $id )
+		{
+			$triggers[] = $this->createTrigger( $id );
+		}
+		
+		// Сохраняем к кэш и возвращаем результат
+		$this->cache->setItem( $keyName, $triggers, 'triggers' );
+		return $triggers; 		
+	}
+
+	/**
+	 * Метод возвращает все возможные id триггеров из БД
+	 * @return mixed int
+	 */
+	private function getAllTriggersIDs()
+	{
+		// Проверяем наличие в кэше
+		$ids = $this->cache->getItem( 'all IDs', 'triggers' );
+		if ( ! empty( $ids ) )
+			return $ids;
+			
+		$args = array(
+			'post_type'		=> array( self::CPT ),
+			'post_status'	=> array( 'publish' ),
+			'fields'		=> 'ids',
+		);
+		
+		// The Query
+		$query = new \WP_Query;
+		$ids = $query->query( $args );
+		
+		// Сохраняем к кэш и возвращаем результат
+		$this->cache->setItem( 'all IDs', $ids, 'triggers' );
+		return $ids; 
+	}
+	
+	/**
+	 * Метод возвращает id глобальных триггеров из БД
+	 * @return mixed int
+	 */
+	public function getGlobalTriggersIDs()
+	{
+		// Проверяем наличие в кэше
+		$ids = $this->cache->getItem( 'global IDs', 'triggers' );
+		if ( ! empty( $ids ) )
+			return $ids;
+			
+		$args = array(
+			'post_type'              => array( self::CPT ),
+			'post_status'            => array( 'publish' ),
+			'fields'				 => 'ids',
+			'meta_query'             => array(
+				array(
+					'key'     => 'wcdt_global',
+					'value'   => '1',
+				),
+			),
+		);
+		
+		// The Query
+		$query = new \WP_Query;
+		$ids = $query->query( $args );
+		
+		// Сохраняем к кэш и возвращаем результат
+		$this->cache->setItem( 'global IDs', $ids, 'triggers' );
+		return $ids; 
+	}
+	
+	/**
+	 * Метод возвращает id неглобальных триггеров из БД
+	 * @return mixed int
+	 */
+	public function getNonGlobalTriggersIDs()
+	{
+		// Проверяем наличие в кэше
+		$ids = $this->cache->getItem( 'non-global IDs', 'triggers' );
+		if ( ! empty( $ids ) )
+			return $ids;
+			
+		$args = array(
+			'post_type'              => array( self::CPT ),
+			'post_status'            => array( 'publish' ),
+			'fields'				 => 'ids',
+			'meta_query'             => array(
+				array(
+					'key'     => 'wcdt_global',
+					'value'   => '',
+				),
+			),
+		);
+		
+		// The Query
+		$query = new \WP_Query;
+		$ids = $query->query( $args );
+		
+		// Сохраняем к кэш и возвращаем результат
+		$this->cache->setItem( 'non-global IDs', $ids, 'triggers' );
+		return $ids; 
+	}	
 }

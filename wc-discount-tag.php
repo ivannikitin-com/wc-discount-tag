@@ -22,10 +22,17 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 // Подключение классов
 require_once( 'classes/isettingspart.php' );
 require_once( 'classes/settings.php' );
+require_once( 'classes/storages/abstractstorage.php' );
+require_once( 'classes/storages/cachestorage.php' );
+require_once( 'classes/storages/sessionstorage.php' );
 require_once( 'classes/discountmanager.php' );
 require_once( 'classes/discounts/abstractdiscount.php' );
 require_once( 'classes/triggermanager.php' );
+require_once( 'classes/triggers/exceptions.php' );
 require_once( 'classes/triggers/abstracttrigger.php' );
+require_once( 'classes/triggers/iptrigger.php' );
+require_once( 'classes/triggers/sessiontrigger.php' );
+require_once( 'classes/triggers/querystringtrigger.php' );
 
 
 // Основной класс плагина

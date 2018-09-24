@@ -4,7 +4,6 @@
  * Реализует таксономию скидок
  */
 namespace WCDT;
-use WCDT\Discounts;
 
 class DiscountManager
 {
@@ -23,6 +22,9 @@ class DiscountManager
 	 */
 	public function __construct()
 	{
+		// Инициализация менеджера триггеров
+		$this->triggerManager = new TriggerManager();
+		
 		// Регистрация таксономии
 		$this->registerTaxonomy();
 		
@@ -39,9 +41,6 @@ class DiscountManager
 			add_filter( 'manage_' . self::TAXONOMY . '_custom_column', array( $this, 'getTableColumnContent' ), 10, 3 );
 			add_filter( 'manage_edit-' . self::TAXONOMY . '_sortable_columns', array( $this, 'getTableSortableColumns' ) );
 		}
-		
-		// Инициализация менеджера триггеров
-		$this->triggerManager = new TriggerManager();
 	}
 
 	/**
@@ -168,6 +167,9 @@ class DiscountManager
 		if( empty( $wcdt_discounttype ) ) $wcdt_discounttype = '';
 		if( empty( $wcdt_discountvalue ) ) $wcdt_discountvalue = '';
 		if( empty( $wcdt_triggers ) ) $wcdt_triggers = '';
+		
+		// Список неглобальных триггеров
+		$triggers = $this->triggerManager->getTriggers(  $this->triggerManager->getNonGlobalTriggersIDs() );
 
 		// Form fields.
 		echo '<tr class="form-field term-wcdt_discounttype-wrap">';
@@ -201,12 +203,13 @@ class DiscountManager
 		echo '	<label for="wcdt_triggers">' . __( 'Триггеры', Plugin::TEXTDOMAIN ) . '</label>';
 		echo '</th>';
 		echo '<td><script>jQuery(function($){ $("#wcdt_triggers").chosen({width: "95%"}); })</script>';
-		echo '	<select id="wcdt_triggers" name="wcdt_triggers[]" multiple>';
-		echo '		<option value="trigger1" ' . selected( $wcdt_triggers, 'trigger1', false ) . '> ' . __( 'value1', Plugin::TEXTDOMAIN ) . '</option>';
-		echo '		<option value="trigger2" ' . selected( $wcdt_triggers, 'trigger2', false ) . '> ' . __( 'value2', Plugin::TEXTDOMAIN ) . '</option>';
-		echo '		<option value="trigger3" ' . selected( $wcdt_triggers, 'trigger3', false ) . '> ' . __( 'value3', Plugin::TEXTDOMAIN ) . '</option>';
+		echo '	<select id="wcdt_triggers" name="wcdt_triggers[]" multiple data-placeholder="' .  __( 'Выберите триггеры активации', Plugin::TEXTDOMAIN ) .  '">';
+		foreach ( $triggers as $trigger )
+		{
+			echo '		<option value="' . $trigger->id . '" ' . selected( $wcdt_triggers, $trigger->id, false ) . '> ' . $trigger->title . '</option>';
+		}
 		echo '	</select>';
-		echo '	<p class="description">' . __( 'Выберите триггеры активации', Plugin::TEXTDOMAIN ) . '</p>';
+		
 		echo '</td>';
 		echo '</tr>';	
 
