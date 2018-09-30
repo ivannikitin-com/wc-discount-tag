@@ -17,11 +17,11 @@ class SessionStorage extends AbstractStorage
     protected function __construct() 
 	{
 		// Старт сессии
-		if( empty ( session_id() ) )
+		if( empty ( $this->getSessionId() ) )
 			session_start();
 
 		parent::__construct();
-	}	
+	}
 	
 	/**
 	 * Метод востанавливает хранилище
@@ -56,5 +56,14 @@ class SessionStorage extends AbstractStorage
 	{
 		$_SESSION[ self::KEY ] = array();
 		$this->items = array(); 
-	}		
+	}
+	
+	/**
+	 * Возвращает ID сессии
+	 */
+	public function getSessionId()
+	{
+		return session_id();
+	}	
+	
 }

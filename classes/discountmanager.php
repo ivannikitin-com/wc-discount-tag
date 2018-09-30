@@ -4,6 +4,7 @@
  * Реализует таксономию скидок
  */
 namespace WCDT;
+use WCDT\Storages\SessionStorage as SessionStorage;
 
 class DiscountManager
 {
@@ -28,8 +29,10 @@ class DiscountManager
 		// Регистрация таксономии
 		$this->registerTaxonomy();
 		
+		// Проыверка админки
 		if ( is_admin() ) 
 		{
+			// Хуки админки
 			add_action( self::TAXONOMY . '_add_form_fields',  array( $this, 'create_screen_fields'), 10, 1 );
 			add_action( self::TAXONOMY . '_edit_form_fields', array( $this, 'edit_screen_fields' ),  10, 2 );
 
@@ -41,8 +44,35 @@ class DiscountManager
 			add_filter( 'manage_' . self::TAXONOMY . '_custom_column', array( $this, 'getTableColumnContent' ), 10, 3 );
 			add_filter( 'manage_edit-' . self::TAXONOMY . '_sortable_columns', array( $this, 'getTableSortableColumns' ) );
 		}
+		else
+		{
+			// Хуки цены, ставим ТОЛЬКО на фронтэнде!
+			
+			
+			// https://stackoverflow.com/questions/45806249/change-product-prices-via-a-hook-in-woocommerce-3
+			// Simple, grouped and external products
+			add_filter( 'woocommerce_product_get_price', array( $this, 'getProductPrice' ), 99, 2 );
+			add_filter( 'woocommerce_product_get_regular_price', array( $this, 'getProductPrice' ), 99, 2 );
+			
+			// Variations
+			add_filter( 'woocommerce_product_variation_get_price', array( $this, 'getProductPrice' ), 99, 2 );				
+			add_filter( 'woocommerce_product_variation_get_regular_price', array( $this, 'getProductPrice' ), 99, 2 );
+			
+			// Variable (price range)
+			add_filter( 'woocommerce_variation_prices_price', array( $this, 'getProductVariablePrice' ), 99, 3 );			
+			add_filter( 'woocommerce_variation_prices_regular_price', array( $this, 'getProductVariablePrice' ), 99, 3 );
+			
+			// Caching and dynamic pricing – upcoming changes to the get_variation_prices method
+			add_filter( 'woocommerce_get_variation_prices_hash', array( $this, 'getVariationPricesHash' ), 99, 1 );
+		}
+		
+
 	}
 
+	/** ------------------------------------------------------------------------------------------------------------------------
+	 * Классы и реализация скидок 
+	 */	
+	
 	/**
 	 * Метод возвращает типы скидок и реализующие их классы
 	 */
@@ -53,6 +83,67 @@ class DiscountManager
 			'\WCDT\Discounts\PercentDiscount' => 'Процентовая скидка',
 			'\WCDT\Discounts\ProductDiscount' => 'Цена со скидкой указана в продукте',
 		);
+	}
+	
+	/**
+	 * Создает экзмепляр триггера
+	 * @param int $id ID триггера
+	 * @return AbsctractDiscount
+	 */
+	private function createDiscount( $id )
+	{
+		// Тип класса триггера
+		$class = get_term_meta( $id, 'wcdt_discounttype', true );
+		
+		// Пытаемся создать объект скидки
+		try 
+		{
+			$discount = new $class();
+		} 
+		catch (\Exception $e) 
+		{
+			throw new UndefinedDiscountException( __( 'Скидка не неопределена.' . 'ID: '. $id . ' Class: ' . $class ) );
+		}
+		
+		$discount->id = $id;
+		$discount->value = get_term_meta( $id, 'wcdt_discountvalue', true );
+		
+		return $discount;
+	}
+	
+	/**
+	 * Создает массив скидок по массиву id или строке, содержащей список ID через запятую 
+	 * @param mixed | string $ids массив или строка с ID скидок
+	 * @return mixed AbsctractDiscount
+	 */
+	public function getDiscounts( $ids )
+	{
+		// Если передана строка. формируем массив ID скидок
+		if ( gettype( $ids ) == 'string' )
+		{
+			$ids = explode(',', $ids );
+		}
+		
+		// Формируем массив триггеров
+		$discounts = array();
+		foreach ( $ids as $id )
+		{
+			$discounts[] = $this->createDiscount( $id );
+		}
+		
+		return $discounts;
+	}
+	
+	/**
+	 * Возвращает массив скидок для указанного продукта 
+	 * @param int $productId ID продукта
+	 * @return mixed AbsctractDiscount
+	 */
+	public function getProductDiscounts( $productId )
+	{
+		// ID скидок для этого продукта
+		$discountIds = wp_get_post_terms( $productId, self::TAXONOMY, array( 'fields' => 'ids' ) );
+		return $this->getDiscounts( $discountIds );
 	}
 	
 	/** ------------------------------------------------------------------------------------------------------------------------
@@ -323,5 +414,72 @@ class DiscountManager
 	}
 	
 	/** ------------------------------------------------------------------------------------------------------------------------
+	 * Обработчики скидок WooCommerce
 	 */
+	
+	/**
+	 * Обработчик хуков цены
+	 * https://stackoverflow.com/questions/45806249/change-product-prices-via-a-hook-in-woocommerce-3
+	 *
+	 * @param float $price Переданная цена
+	 * @param WC_Product $product	Продукт
+	 * @return float
+	 */
+	public function getProductPrice( $price, $product )
+	{
+		return $this->calculatePrice( $price, $product->get_id() );
+	}	
+	
+	/**
+	 * Обработчик хуков диапазона цены
+	 * https://stackoverflow.com/questions/45806249/change-product-prices-via-a-hook-in-woocommerce-3
+	 *
+	 * @param float $price Переданная цена
+	 * @param 	 $variation	
+	 * @param WC_Product $product	Продукт
+	 * @return float
+	 */
+	public function getProductVariablePrice( $price, $variation, $product )
+	{
+		return $this->calculatePrice( $price, $product->get_id() ); 		
+	}
+	
+	/**
+	 * Caching and dynamic pricing
+	 * https://woocommerce.wordpress.com/2015/09/14/caching-and-dynamic-pricing-upcoming-changes-to-the-get_variation_prices-method/
+	 *
+	 * @param mixed $hash
+	 * @return float
+	 */	
+	public function getVariationPricesHash( $hash )
+	{
+		$session = SessionStorage::getInstance();
+		$hash[] = $session->getSessionId();
+		return $hash;
+	}
+	
+	/** ------------------------------------------------------------------------------------------------------------------------
+	 * Логика скидок
+	 */	
+	
+	/**
+	 * Обработка цены
+	 * @param float $price	Переданная цена
+	 * @param int	$productId ID продукта	
+	 * @return float
+	 */
+	public function calculatePrice( $price, $productId )
+	{
+		$discounts = $this->getProductDiscounts( $productId );
+		
+		// Обработаем каждую скидку
+		foreach ( $discounts as $discount )
+		{
+			// Обработка цены
+			$price = $discount->calculate( $price );
+		}
+		
+		return $price;
+	}	
+	
 }
