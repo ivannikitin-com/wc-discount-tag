@@ -114,6 +114,9 @@ class DiscountManager
 		$discountTypes = $this->getTypes();
 		$discountTypeTitles = array_values( $discountTypes );
 		
+		// Список неглобальных триггеров
+		$triggers = $this->triggerManager->getTriggers(  $this->triggerManager->getNonGlobalTriggersIDs() );		
+		
 		
 		// Set default values.
 		$wcdt_discounttype = array_keys( $discountTypes )[ 0 ];
@@ -142,12 +145,12 @@ class DiscountManager
 		// Choosen select: https://harvesthq.github.io/chosen/
 		echo '<div class="form-field term-wcdt_triggers-wrap"><script>jQuery(function($){ $("#wcdt_triggers").chosen({width: "95%"}); })</script>';
 		echo '	<label for="wcdt_triggers">' . __( 'Триггеры', Plugin::TEXTDOMAIN ) . '</label>';
-		echo '	<select id="wcdt_triggers" name="wcdt_triggers" multiple>';
-		echo '		<option value="trigger1" ' . selected( $wcdt_triggers, 'trigger1', false ) . '> ' . __( 'value1', Plugin::TEXTDOMAIN ) . '</option>';
-		echo '		<option value="trigger2" ' . selected( $wcdt_triggers, 'trigger2', false ) . '> ' . __( 'value2', Plugin::TEXTDOMAIN ) . '</option>';
-		echo '		<option value="trigger3" ' . selected( $wcdt_triggers, 'trigger3', false ) . '> ' . __( 'value3', Plugin::TEXTDOMAIN ) . '</option>';
+		echo '	<select id="wcdt_triggers" name="wcdt_triggers[]" multiple data-placeholder="' .  __( 'Выберите триггеры активации', Plugin::TEXTDOMAIN ) .  '">';
+		foreach ( $triggers as $trigger )
+		{
+			echo '		<option value="' . $trigger->id . '"' . $this->selected( $wcdt_triggers, $trigger->id ) . '> ' . $trigger->title  . '</option>';
+		}		
 		echo '	</select>';
-		echo '	<p class="description">' . __( 'Выберите триггеры активации', Plugin::TEXTDOMAIN ) . '</p>';
 		echo '</div>';
 
 	}
@@ -192,7 +195,7 @@ class DiscountManager
 		echo '	<label for="wcdt_discountvalue">' . __( 'Значение', Plugin::TEXTDOMAIN ) . '</label>';
 		echo '</th>';
 		echo '<td>';
-		echo '	<input type="text" id="wcdt_discountvalue" name="wcdt_discountvalue" placeholder="' . esc_attr__( '', Plugin::TEXTDOMAIN ) . '" value="' . esc_attr( $wcdt_discountvalue ) . '">';
+		echo '	<input type="text" id="wcdt_discountvalue" name="wcdt_discountvalue" placeholder="" value="' . esc_attr( $wcdt_discountvalue ) . '">';
 		echo '	<p class="description">' . __( 'Укажите значение скидки', Plugin::TEXTDOMAIN ) . '</p>';
 		echo '</td>';
 		echo '</tr>';
@@ -268,10 +271,11 @@ class DiscountManager
 		
 		$newColumns = array();
 		$newColumns['cb'] = $columns['cb'];
-		$newColumns['wcdt_discounttype'] = __( 'Тип скидки', Plugin::TEXTDOMAIN );
 		$newColumns['name'] = $columns['name'];
-		$newColumns['wcdt_discountvalue'] = __( 'Величина скидки', Plugin::TEXTDOMAIN );
 		$newColumns['description'] = $columns['description'];
+		$newColumns['wcdt_discounttype'] = __( 'Тип скидки', Plugin::TEXTDOMAIN );		
+		$newColumns['wcdt_discountvalue'] = __( 'Величина скидки', Plugin::TEXTDOMAIN );
+		$newColumns['wcdt_triggers'] = __( 'Триггеры', Plugin::TEXTDOMAIN );
 		$newColumns['posts'] = __( 'Продукты', Plugin::TEXTDOMAIN );
 		
 		return $newColumns;
@@ -291,7 +295,17 @@ class DiscountManager
 				return $discountTypes[ get_term_meta( $term_id, 'wcdt_discounttype', true ) ];
 				
 			case 'wcdt_discountvalue':
-				return get_term_meta( $term_id, 'wcdt_discountvalue', true );	
+				return get_term_meta( $term_id, 'wcdt_discountvalue', true );
+				
+			case 'wcdt_triggers':
+				$triggers = $this->triggerManager->getTriggers( get_term_meta( $term_id, 'wcdt_triggers', true ) );
+				$triggerString = '';
+				foreach( $triggers as $trigger )
+				{
+					$triggerString .= $trigger->title . '<br>';
+				}
+				$triggerString .= '';
+				return $triggerString;
 			
 			default:
 				return $content;
