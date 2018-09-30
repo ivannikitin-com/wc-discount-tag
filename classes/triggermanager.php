@@ -103,7 +103,7 @@ class TriggerManager
 			'show_in_admin_bar'     => false,
 			'show_in_nav_menus'     => false,
 			'can_export'            => false,
-			'has_archive'           => false,
+			'has_archive'           => false, 
 			'exclude_from_search'   => true,
 			'publicly_queryable'    => true,
 			'rewrite'               => false,
@@ -283,6 +283,8 @@ class TriggerManager
 	{
 		// Тип класса триггера
 		$class = get_post_meta( $id, 'wcdt_type', true );
+		
+		//echo 'Create trigger ', $id, $class, '<br>';
 		
 		// Пытаемся создать триггер
 		try 

@@ -8,14 +8,6 @@ namespace WCDT\Triggers;
 class QueryStringTrigger extends SessionTrigger
 {
 	/**
-	 * Констуктор класса
- 	 */		
-    public function __construct() 
-	{
-		parent::__construct();
-	}
-	
-	/**
 	 * Метод проверяет выполнение триггера
 	 * @return bool
 	 */
@@ -24,6 +16,10 @@ class QueryStringTrigger extends SessionTrigger
 		// Если в сессии сохранен положительный результат проверки, возвращаем его
 		if ( parent::check() )
 			return true;
+		
+		// Если нечего проверять, возвращаем false
+		if ( empty( $_SERVER[ 'QUERY_STRING' ] ) )
+			return false;
 		
 		// Если есть указанное значение в строке запроса
 		if ( strpos( $this->value, $_SERVER[ 'QUERY_STRING' ] ) !== false )

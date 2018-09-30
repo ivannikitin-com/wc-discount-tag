@@ -5,7 +5,7 @@
 namespace WCDT\Triggers;
 use WCDT\Storages\SessionStorage as SessionStorage;
 
-class SessionTrigger extends AbstractTrigger
+class SessionTrigger extends AbstractTrigger 
 {
 	/**
 	 * Сессионное хранилище
@@ -16,15 +16,7 @@ class SessionTrigger extends AbstractTrigger
 	 * Глобальный триггер
  	 */
 	protected $key;	
-	
-	/**
-	 * Констуктор класса
- 	 */		
-    public function __construct() 
-	{
-		$this->session = SessionStorage::getInstance();
-		$this->key = 'trigger_' . $this->id;
-	}		
+
 	
 	/**
 	 * Метод проверяет выполнение триггера
@@ -32,9 +24,12 @@ class SessionTrigger extends AbstractTrigger
 	 */
 	public function check()
 	{
-		echo '!!!' .  $this->key;
+		// Свойства объекта
+		$this->key = 'trigger_' . $this->id;
+		$this->session = SessionStorage::getInstance();
+		
 		// Если в сессии сохранен положительный результат проверки, возвращаем его
-		if ( true|| $this->session->getItem( $this->key, 'triggers' ) )
+		if ( $this->session->getItem( $this->key, 'triggers' ) )
 			return true;
 		
 		// Иначе возвращаем false

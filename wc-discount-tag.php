@@ -45,6 +45,13 @@ class Plugin implements ISettingsPart
 	const TEXTDOMAIN = 'wc-discount-tag';
 	
 	/**
+	 * Параметр настроек "Режим отладки"
+	 * @static  
+	 */
+	const SETTINGS_DEDUG_MODE = 'wcdt_debug_mode';
+	
+	
+	/**
 	 * Объект параметров 
 	 */
     private $settings;
@@ -109,8 +116,8 @@ class Plugin implements ISettingsPart
 				'name' => __( 'Режим отладки', self::TEXTDOMAIN ),
 				'type' => 'checkbox',
 				'default' => 0,
-				'desc' => __( 'Этот режим включает функции отладки, например, возможность указания любого параметра ip с помощью GET-параметров', INWCOA ),
-				'id'   => 'wcdt_debug_mode'
+				'desc' => __( 'Этот режим включает функции отладки, например, возможность указания любого параметра ip с помощью GET-параметров', self::TEXTDOMAIN ),
+				'id'   => self::SETTINGS_DEDUG_MODE
 			)			
 		);
 	}

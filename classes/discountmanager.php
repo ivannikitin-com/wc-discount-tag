@@ -206,13 +206,35 @@ class DiscountManager
 		echo '	<select id="wcdt_triggers" name="wcdt_triggers[]" multiple data-placeholder="' .  __( 'Выберите триггеры активации', Plugin::TEXTDOMAIN ) .  '">';
 		foreach ( $triggers as $trigger )
 		{
-			echo '		<option value="' . $trigger->id . '" ' . selected( $wcdt_triggers, $trigger->id, false ) . '> ' . $trigger->title . '</option>';
+			echo '		<option value="' . $trigger->id . '"' . $this->selected( $wcdt_triggers, $trigger->id ) . '> ' . $trigger->title  . '</option>';
 		}
 		echo '	</select>';
-		
 		echo '</td>';
-		echo '</tr>';	
+		echo '</tr>';
 
+	}
+	
+	/**
+	 * Сервисный метод выводит selected если второе занчение является подстрокой первого
+	 * @param string | mixed $values Исходная строка со значениями
+	 * @param string $find Значение, которое ищется
+	 * @return string
+	 */
+	private function selected( $values, $find )
+	{
+		if ( gettype( $values ) == 'array' )
+		{
+			if ( count($values ) == 0 )
+				return '';
+			
+			$values = implode( ' ', $values );
+		}
+			
+		
+		if ( strpos( trim( $values ), trim( $find ) ) !== false )
+			return ' selected';
+		else
+			return '';
 	}
 
 	public function save_data( $term_id ) 

@@ -17,7 +17,7 @@ class SessionStorage extends AbstractStorage
     protected function __construct() 
 	{
 		// Старт сессии
-		if( ! session_id() )
+		if( empty ( session_id() ) )
 			session_start();
 
 		parent::__construct();
@@ -28,7 +28,11 @@ class SessionStorage extends AbstractStorage
 	 * @return mixed
 	 */
 	protected function restore()
-	{	
+	{
+		// Если нет сессии...
+		if ( ! $_SESSION )
+			return array();
+		
 		// Если сессиооная переменная не найдена
 		if ( array_key_exists( self::KEY, $_SESSION ) )
 			return array();
