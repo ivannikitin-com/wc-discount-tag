@@ -19,7 +19,7 @@ class SessionStorage extends AbstractStorage
 		// Старт сессии
 		if( empty ( $this->getSessionId() ) )
 			session_start();
-
+		
 		parent::__construct();
 	}
 	
@@ -29,12 +29,14 @@ class SessionStorage extends AbstractStorage
 	 */
 	protected function restore()
 	{
+		//var_dump( $_SESSION );
+		
 		// Если нет сессии...
-		if ( ! $_SESSION )
+		if ( empty( $_SESSION ) )
 			return array();
 		
 		// Если сессиооная переменная не найдена
-		if ( array_key_exists( self::KEY, $_SESSION ) )
+		if ( ! array_key_exists( self::KEY, $_SESSION ) )
 			return array();
 		
 		// Возврат кэша

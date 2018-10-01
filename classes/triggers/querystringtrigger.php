@@ -18,11 +18,12 @@ class QueryStringTrigger extends SessionTrigger
 			return true;
 		
 		// Если нечего проверять, возвращаем false
-		if ( empty( $_SERVER[ 'QUERY_STRING' ] ) )
+		$queryString = sanitize_text_field( $_SERVER[ 'QUERY_STRING' ] );
+		if ( empty( $queryString ) )
 			return false;
 		
 		// Если есть указанное значение в строке запроса
-		if ( strpos( $this->value, $_SERVER[ 'QUERY_STRING' ] ) !== false )
+		if ( strpos( $queryString, $this->value ) !== false )
 		{
 			// Сохраняем в сессии проверку
 			$this->session->setItem( $this->key, true, 'triggers' );

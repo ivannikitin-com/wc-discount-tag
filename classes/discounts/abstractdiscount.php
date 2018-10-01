@@ -18,6 +18,33 @@ class AbsctractDiscount
 	public $value = 0.00;
 	
 	/**
+	 * Значение скидки
+ 	 */
+	private $triggers = array();	
+	
+	/**
+	 * Конструктор 
+	 * @param int $id	ID скидки
+	 * @param float $value	Размер скидки
+	 * @param mixed AbstractTrigger $triggers массив триггеров
+	 */
+	public function __construct( $id, $value, $triggers )
+	{
+		$this->id = $id;
+		$this->value = $value;
+		$this->triggers = $triggers;
+	}
+	
+	/**
+	 * Метод возвращает триггеры скидки
+	 * @return mixed AbstractTrigger
+	 */
+	public function getTriggers()
+	{
+		return $this->triggers;
+	}
+	
+	/**
 	 * Метод рассчитывает новое значение цены
 	 * Должен быть перекрыт наследниками
 	 * @param float $prive цена

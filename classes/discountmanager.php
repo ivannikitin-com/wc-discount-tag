@@ -6,12 +6,23 @@
 namespace WCDT;
 use WCDT\Storages\SessionStorage as SessionStorage;
 
-class DiscountManager
+class DiscountManager implements ISettingsPart
 {
 	/**
 	 * Таксономия скидок
 	 */
 	const TAXONOMY = 'wcdt_discount';
+	
+	/**
+	 * Параметр настроек "Коэффициеент округления"
+	 * @static  
+	 */
+	const SETTINGS_PRICE_ROUND = 'wcdt_price_round';	
+	
+	/**
+	 * Объект настроек 
+	 */
+	private $settings;		
 	
 	/**
 	 * Объект менеджера триггеров 
@@ -23,6 +34,10 @@ class DiscountManager
 	 */
 	public function __construct()
 	{
+		// Объект настроек
+		$this->settings = Settings::getInstance();
+		$this->settings->registerPart( $this );		
+		
 		// Инициализация менеджера триггеров
 		$this->triggerManager = new TriggerManager();
 		
@@ -65,9 +80,24 @@ class DiscountManager
 			// Caching and dynamic pricing – upcoming changes to the get_variation_prices method
 			add_filter( 'woocommerce_get_variation_prices_hash', array( $this, 'getVariationPricesHash' ), 99, 1 );
 		}
-		
-
 	}
+	
+	/**
+	 * Формирует массив настроек
+	 */
+	public function getSettings()
+	{
+		return array(
+			'discount_round' => array(
+				'name' => __( 'Коэффициент округления итоговой цены со скидкой', Plugin::TEXTDOMAIN ),
+				'type' => 'text',
+				'default' => 0,
+				'desc' => __( 'Укажите число знаков после запятой для округления. Отрицательные числа -- это округдение ДО ЗАПЯТОЙ, например, -2 -- округление до сотен рублей.<br>Важно! Если триггеры скидки не сработали или сработал блокирующий триггер, округления не происходит, цена выводится так, как она указана в свойствах продукта.', Plugin::TEXTDOMAIN ),
+				'css'  => 'width:3em;text-align:right;float:left;margin-right:1em',
+				'id'   => self::SETTINGS_PRICE_ROUND
+			)			
+		);
+	}		
 
 	/** ------------------------------------------------------------------------------------------------------------------------
 	 * Классы и реализация скидок 
@@ -94,19 +124,18 @@ class DiscountManager
 	{
 		// Тип класса триггера
 		$class = get_term_meta( $id, 'wcdt_discounttype', true );
+		$value = get_term_meta( $id, 'wcdt_discountvalue', true );
+		$triggers = get_term_meta( $id, 'wcdt_triggers', true );
 		
 		// Пытаемся создать объект скидки
 		try 
 		{
-			$discount = new $class();
+			$discount = new $class( $id, $value, $triggers );
 		} 
 		catch (\Exception $e) 
 		{
 			throw new UndefinedDiscountException( __( 'Скидка не неопределена.' . 'ID: '. $id . ' Class: ' . $class ) );
 		}
-		
-		$discount->id = $id;
-		$discount->value = get_term_meta( $id, 'wcdt_discountvalue', true );
 		
 		return $discount;
 	}
@@ -470,13 +499,28 @@ class DiscountManager
 	 */
 	public function calculatePrice( $price, $productId )
 	{
+		// Скидки на ткущий товар
 		$discounts = $this->getProductDiscounts( $productId );
+		
+		// Флаг мсдификации цены
+		$isModified = false;
 		
 		// Обработаем каждую скидку
 		foreach ( $discounts as $discount )
 		{
 			// Обработка цены
-			$price = $discount->calculate( $price );
+			if ( $this->triggerManager->check( $discount->getTriggers(), true ) )
+			{
+				$price = $discount->calculate( $price );
+				$isModified = true;
+			}
+		}
+		
+		// При необходимости округляем полученную цену
+		if ( $isModified )
+		{
+			$precision = get_option( self::SETTINGS_PRICE_ROUND, 0 );
+			$price = round( $price, $precision );
 		}
 		
 		return $price;

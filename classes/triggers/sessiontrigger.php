@@ -30,7 +30,10 @@ class SessionTrigger extends AbstractTrigger
 		
 		// Если в сессии сохранен положительный результат проверки, возвращаем его
 		if ( $this->session->getItem( $this->key, 'triggers' ) )
+		{
 			return true;
+		}
+			
 		
 		// Иначе возвращаем false
 		return false;
