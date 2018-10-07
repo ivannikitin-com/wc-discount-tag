@@ -3,7 +3,7 @@
  * Plugin Name:  WooCommerce Discount Tag
  * Plugin URI:   https://github.com/ivannikitin-com/wc-discount-tag
  * Description:  Плагин скидочных меток для WooCommerce
- * Version:      0.1
+ * Version:      1.0
  * Author:       Иван Никитин и партнеры
  * Author URI:   https://ivannikitin.com/
  * License:      GPL2

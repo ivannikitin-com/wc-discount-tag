@@ -109,9 +109,9 @@ class DiscountManager implements ISettingsPart
 	private function getTypes()
 	{
 		return array(
-			'\WCDT\Discounts\FlatDiscount' => 'Фиксированная скидка',
-			'\WCDT\Discounts\PercentDiscount' => 'Процентовая скидка',
-			'\WCDT\Discounts\ProductDiscount' => 'Цена со скидкой указана в продукте',
+			'\WCDT\Discounts\FlatDiscount' 			=> 'Фиксированная скидка',
+			'\WCDT\Discounts\PercentDiscount' 		=> 'Процентовая скидка',
+			// '\WCDT\Discounts\ProductDiscount' 	=> 'Цена со скидкой указана в продукте',
 		);
 	}
 	
