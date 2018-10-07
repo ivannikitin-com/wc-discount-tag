@@ -25,6 +25,8 @@ class QueryStringTrigger extends SessionTrigger
 		// Если есть указанное значение в строке запроса
 		if ( strpos( $queryString, $this->value ) !== false )
 		{
+			WP_DEBUG && $this->isDebugMode &&  error_log( __CLASS__ . ' результат проверки: true' );
+			
 			// Сохраняем в сессии проверку
 			$this->session->setItem( $this->key, true, 'triggers' );
 			return true;

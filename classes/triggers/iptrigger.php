@@ -11,21 +11,7 @@ class IPTrigger extends AbstractTrigger
 	 * GET-параметр, который позволяет задать IP в режиме отладки
 	 * @static  
 	 */
-	const GET_PARAM = 'ip';	
-	
-	/**
-	 * Флаг режима отладки 
-	 */
-    private $isDebugMode = false;		
-	
-	/**
-	 * Конструктор 
-	 */
-	public function __construct()
-	{
-		// Флаг режима отладки
-		$this->isDebugMode = get_option( \WCDT\Plugin::SETTINGS_DEDUG_MODE, false );
-	}
+	const GET_PARAM = 'ip';		
 	
 	/**
 	 * Метод проверяет текущий IP-клиента и возвразает true если он совпадает с заданным 
@@ -33,7 +19,16 @@ class IPTrigger extends AbstractTrigger
 	 */
 	public function check()
 	{
-		return ( strpos( $this->value, $this->getIP() ) !== false );
+		$ip = $this->getIP();
+		$result = (bool) ( strpos( $this->value, $ip ) !== false );
+		
+		// Выводим отладочное сообщение 
+		WP_DEBUG && $this->isDebugMode &&  error_log( __CLASS__ . 
+													 ' результат проверки: ' . var_export( $result, true )  . 
+													 ' текущий IP: ' .var_export($ip, true ) . 
+													 ' Проверяем: ' . var_export($this->value, true ) );
+		
+		return $result;
 	}
 	
 	/**  
@@ -44,7 +39,15 @@ class IPTrigger extends AbstractTrigger
 	{
 		// Если включен режим отладки и есть GET-параметр безусловно перезаписываем IP
 		if ( $this->isDebugMode && isset( $_GET[ self::GET_PARAM ] ) )
-			return sanitize_text_field( $_GET[ self::GET_PARAM ] );
+		{
+			$debugIP = sanitize_text_field( $_GET[ self::GET_PARAM ] );
+			
+			// Выводим отладочное сообщение 
+			WP_DEBUG && $this->isDebugMode &&  error_log( __CLASS__ . ' переопределение IP: ' . $debugIP );
+			
+			return $debugIP;
+		}
+			
 		
 		$ip = '';
 		

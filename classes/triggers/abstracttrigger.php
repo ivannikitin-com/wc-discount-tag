@@ -30,7 +30,22 @@ class AbstractTrigger
 	/**
 	 * Название триггера
  	 */
-	public $title = '';	
+	public $title = '';
+	
+	/**
+	 * Флаг режима отладки 
+	 */
+    protected $isDebugMode = false;		
+	
+	/**
+	 * Конструктор 
+	 */
+	public function __construct()
+	{
+		// Флаг режима отладки
+		$this->isDebugMode = get_option( \WCDT\Plugin::SETTINGS_DEDUG_MODE, false );
+		//error_log('AbstractTrigger::__construct выподлнен. $this->isDebugMode ' . var_export( $this->isDebugMode, true) );
+	}	
 	
 	/**
 	 * Метод проверяет выполнение триггера
