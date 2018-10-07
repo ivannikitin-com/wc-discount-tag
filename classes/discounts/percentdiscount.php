@@ -14,6 +14,11 @@ class PercentDiscount extends AbsctractDiscount
 	 */
 	public function calculate( $price )
 	{
-		return $price + $price * $this->value / 100 ;
+		$result =  $price + $price * $this->value / 100 ;
+		
+		// Выводим отладочное сообщение 
+		WP_DEBUG && $this->isDebugMode && error_log( __CLASS__ . ' корректировка цены цены: ' . $price . ' --> ' . $result );
+		
+		return $result;
 	}	
 }

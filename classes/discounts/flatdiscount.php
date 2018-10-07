@@ -14,6 +14,11 @@ class FlatDiscount extends AbsctractDiscount
 	 */
 	public function calculate( $price )
 	{
-		return $price + $this->value;
+		$result =  $price + $this->value;
+		
+		// Выводим отладочное сообщение 
+		WP_DEBUG && $this->isDebugMode && error_log( __CLASS__ . ' корректировка цены цены: ' . $price . ' --> ' . $result );
+		
+		return $result;
 	}	
 }

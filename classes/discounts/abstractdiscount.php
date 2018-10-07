@@ -23,6 +23,11 @@ class AbsctractDiscount
 	private $triggers = array();	
 	
 	/**
+	 * Флаг режима отладки 
+	 */
+    protected $isDebugMode = false;			
+	
+	/**
 	 * Конструктор 
 	 * @param int $id	ID скидки
 	 * @param float $value	Размер скидки
@@ -33,6 +38,8 @@ class AbsctractDiscount
 		$this->id = $id;
 		$this->value = $value;
 		$this->triggers = $triggers;
+		// Флаг режима отладки
+		$this->isDebugMode = get_option( \WCDT\Plugin::SETTINGS_DEDUG_MODE, false );		
 	}
 	
 	/**

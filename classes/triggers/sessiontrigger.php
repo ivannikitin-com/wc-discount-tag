@@ -31,6 +31,7 @@ class SessionTrigger extends AbstractTrigger
 		// Если в сессии сохранен положительный результат проверки, возвращаем его
 		if ( $this->session->getItem( $this->key, 'triggers' ) )
 		{
+			WP_DEBUG && $this->isDebugMode &&  error_log( __CLASS__ . ' в сессии сохранен предудущий результат: true' );
 			return true;
 		}
 			
